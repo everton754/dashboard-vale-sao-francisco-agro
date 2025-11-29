@@ -128,35 +128,60 @@ Dashboard interativo de {', '.join(produtos_selecionados)} em {', '.join(municip
 
 st.markdown("---")
 
+# Lógica para KPIs de Comparação (Delta)
+ano_final = df_filtrado['ano'].max()
+ano_anterior = ano_final - 1
+
+# Dados do ano mais recente no filtro
+df_ano_atual = df_filtrado[df_filtrado['ano'] == ano_final]
+
+# Busca dados do ano anterior no contexto mais amplo (sem filtro de ano)
+# para garantir que o delta possa ser calculado mesmo com range de 1 ano.
+df_contexto = df[
+    (df['municipio'].isin(municipios_selecionados)) &
+    (df['produto'].isin(produtos_selecionados))
+]
+df_ano_anterior = df_contexto[df_contexto['ano'] == ano_anterior]
+
+# Métricas Principais (Focadas no último ano para dar senso de "Estado Atual")
+prod_atual = df_ano_atual['quantidade_produzida_ton'].sum()
+prod_anterior = df_ano_anterior['quantidade_produzida_ton'].sum()
+delta_prod = (prod_atual - prod_anterior) / prod_anterior if prod_anterior > 0 else 0
+
+valor_atual = df_ano_atual['valor_producao_milhoes'].sum()
+valor_anterior = df_ano_anterior['valor_producao_milhoes'].sum()
+delta_valor = (valor_atual - valor_anterior) / valor_anterior if valor_anterior > 0 else 0
+
 col1, col2, col3, col4 = st.columns(4)
 
-producao_total = df_filtrado['quantidade_produzida_ton'].sum()
 with col1:
     st.metric(
-label="📦 Produção Total",
-value=formatar_numero(producao_total, sufixo=" ton")
-)
+        label=f"📦 Produção ({ano_final})",
+        value=formatar_numero(prod_atual, sufixo=" ton"),
+        delta=f"{delta_prod:.1%} vs ano ant."
+    )
 
-valor_total = df_filtrado['valor_producao_milhoes'].sum()
 with col2:
     st.metric(
-label="💰 Valor de Produção",
-value=formatar_numero(valor_total, prefixo="R$ ", sufixo=" Mi", decimais=1)
-)
+        label=f"💰 Valor ({ano_final})",
+        value=formatar_numero(valor_atual, prefixo="R$ ", sufixo=" Mi", decimais=1),
+        delta=f"{delta_valor:.1%} vs ano ant."
+    )
 
+# Mantém médias globais para as outras duas, pois rendimento varia menos
 rendimento_medio = df_filtrado['rendimento_medio_kg_ha'].mean()
 with col3:
     st.metric(
-label="📈 Rendimento Médio",
-value=formatar_numero(rendimento_medio, sufixo=" kg/ha")
-)
+        label="📈 Rendimento Médio (Período)",
+        value=formatar_numero(rendimento_medio, sufixo=" kg/ha")
+    )
 
 preco_medio = df_filtrado['preco_medio_anual_r$_kg'].mean()
 with col4:
     st.metric(
-label="💵 Preço Médio",
-value=formatar_numero(preco_medio, prefixo="R$ ", decimais=2)
-)
+        label="💵 Preço Médio (Período)",
+        value=formatar_numero(preco_medio, prefixo="R$ ", decimais=2)
+    )
 
 st.markdown("---")
 
@@ -207,126 +232,81 @@ st.plotly_chart(fig_valor, use_container_width=True)
 st.markdown("---")
 
 st.header("🗺️ Análise Geográfica e Produtividade")
-
 col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Participação por Município")
-df_municipal = df_filtrado.groupby('municipio', as_index=False).agg({
-'quantidade_produzida_ton': 'sum'
-})
+    df_municipal = df_filtrado.groupby('municipio', as_index=False).agg({
+        'quantidade_produzida_ton': 'sum'
+    })
+    fig_municipio = px.pie(
+        df_municipal, 
+        names='municipio', 
+        values='quantidade_produzida_ton',
+        title="Distribuição da Produção por Município",
+        color_discrete_sequence=[CORES['petrolina'], CORES['juazeiro']]
+    )
+    fig_municipio.update_traces(textposition='inside', textinfo='percent+label')
+    st.plotly_chart(fig_municipio, use_container_width=True)
 
-fig_municipio = px.pie(
-    df_municipal,
-    names='municipio',
-    values='quantidade_produzida_ton',
-    title="Distribuição da Produção por Município",
-    color_discrete_sequence=[CORES['petrolina'], CORES['juazeiro']]
-)
-fig_municipio.update_traces(textposition='inside', textinfo='percent+label')
-st.plotly_chart(fig_municipio, use_container_width=True)
 with col2:
     st.subheader("Rendimento por Produto")
-df_rendimento = df_filtrado.groupby('produto', as_index=False).agg({
-'rendimento_medio_kg_ha': 'mean'
-})
+    df_rendimento = df_filtrado.groupby('produto', as_index=False).agg({
+        'rendimento_medio_kg_ha': 'mean'
+    })
+    fig_rendimento = px.bar(
+        df_rendimento, 
+        x='produto', 
+        y='rendimento_medio_kg_ha',
+        title="Rendimento Médio por Produto (kg/ha)",
+        color='produto',
+        color_discrete_map={'Uva': CORES['uva'], 'Manga': CORES['manga']},
+        text='rendimento_medio_kg_ha'
+    )
+    fig_rendimento.update_traces(
+        texttemplate='%{text:,.0f}', 
+        textposition='outside'
+    )
+    fig_rendimento.update_layout(showlegend=False)
+    st.plotly_chart(fig_rendimento, use_container_width=True)
 
-fig_rendimento = px.bar(
-    df_rendimento,
-    x='produto',
-    y='rendimento_medio_kg_ha',
-    title="Rendimento Médio por Produto (kg/ha)",
-    color='produto',
-    color_discrete_map={'Uva': CORES['uva'], 'Manga': CORES['manga']},
-    text='rendimento_medio_kg_ha'
-)
-fig_rendimento.update_traces(
-    texttemplate='%{text:,.0f}', 
-    textposition='outside'
-)
-fig_rendimento.update_layout(showlegend=False)
-st.plotly_chart(fig_rendimento, use_container_width=True)
 st.markdown("---")
+
 # ==================================================================
-# TABELA INTERATIVA
+# TABELA FINAL OTIMIZADA (COM PROGRESS BAR)
 # ==================================================================
 st.header("📋 Dados Detalhados")
 
+# Ordenação inteligente: Ano mais recente primeiro, depois Município
 df_display = df_filtrado[[
-    'municipio', 'ano', 'produto', 'area_colhida_ha',
-    'quantidade_produzida_ton', 'rendimento_medio_kg_ha',
-    'preco_medio_anual_r$_kg', 'valor_producao_milhoes'
-]].copy()
-
-df_display.columns = [
-    'Município', 'Ano', 'Produto', 'Área (ha)',
-    'Produção (ton)', 'Rendimento (kg/ha)', 'Preço (R$/kg)', 'Valor (R$ Mi)'
-]
-
-df_display['Área (ha)'] = df_display['Área (ha)'].apply(lambda x: f"{x:,.0f}")
-df_display['Produção (ton)'] = df_display['Produção (ton)'].apply(lambda x: f"{x:,.0f}")
-df_display['Rendimento (kg/ha)'] = df_display['Rendimento (kg/ha)'].apply(lambda x: f"{x:,.0f}")
-df_display['Preço (R$/kg)'] = df_display['Preço (R$/kg)'].apply(lambda x: f"R$ {x:.2f}")
-df_display['Valor (R$ Mi)'] = df_display['Valor (R$ Mi)'].apply(lambda x: f"R$ {x:.2f}")
+    'ano', 'municipio', 'produto', 
+    'quantidade_produzida_ton', 'valor_producao_milhoes', 'rendimento_medio_kg_ha'
+]].sort_values(['ano', 'municipio'], ascending=[False, True])
 
 st.dataframe(
-    df_display.sort_values(
-        ['Ano', 'Município', 'Produto'], 
-        ascending=[False, True, True]
-    ),
-    use_container_width=True,
-    hide_index=True
+    df_display,
+    column_config={
+        "ano": st.column_config.NumberColumn(
+            "Ano", format="%d"
+        ),
+        "municipio": "Município",
+        "produto": "Produto",
+        "valor_producao_milhoes": st.column_config.ProgressColumn(
+            "Valor (R$ Mi)",
+            format="R$ %.1f Mi",
+            min_value=0,
+            # float() previne erro se o max for int64 do numpy
+            max_value=float(df_display['valor_producao_milhoes'].max()) if not df_display.empty else 100,
+        ),
+        "quantidade_produzida_ton": st.column_config.NumberColumn(
+            "Produção (ton)",
+            format="%d"
+        ),
+        "rendimento_medio_kg_ha": st.column_config.NumberColumn(
+            "Rendimento (kg/ha)",
+            format="%d kg/ha"
+        )
+    },
+    hide_index=True,
+    use_container_width=True
 )
-
-# ==================================================================
-# DOWNLOAD DE DADOS
-# ==================================================================
-csv = df_filtrado.to_csv(index=False).encode('utf-8')
-st.download_button(
-    label="📥 Baixar Dados Filtrados (CSV)",
-    data=csv,
-    file_name='vsf_dados_filtrados.csv',
-    mime='text/csv',
-)
-
-st.markdown("---")
-
-# ==================================================================
-# INSIGHTS ESTRATÉGICOS
-# ==================================================================
-st.header("💡 Principais Insights")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.info("""
-    **🚀 Crescimento da Uva**  
-    A uva apresentou crescimento de **252%** em produção entre 2013-2024, 
-    com CAGR de **12.1%** no valor de produção.
-    """)
-
-with col2:
-    st.success("""
-    **🥭 Potencial da Manga**  
-    Manga tem oportunidade de **+20% no rendimento** através de 
-    irrigação tecnificada, podendo gerar **R$ 300 Mi/ano** adicionais.
-    """)
-
-# ==================================================================
-# RODAPÉ
-# ==================================================================
-st.markdown("---")
-st.markdown("""
-<div style='text-align: center; color: #666;'>
-    <p><strong>Desenvolvido por:</strong> Everton Santos de Oliveira</p>
-    <p>
-        <a href="https://linkedin.com/in/evert0n-sant0s" target="_blank">LinkedIn</a> | 
-        <a href="https://github.com/everton754" target="_blank">GitHub</a> | 
-        <a href="https://medium.com/@eso.datalab" target="_blank">Medium</a>
-    </p>
-    <p style='font-size: 0.9em;'>
-        <strong>Fonte de Dados:</strong> IBGE (PAM) + CEPEA<br>
-        <strong>Última Atualização:</strong> Novembro 2025
-    </p>
-</div>
-""", unsafe_allow_html=True)
