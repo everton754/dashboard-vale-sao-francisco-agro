@@ -1,0 +1,18 @@
+# Core Data Science
+pandas
+numpy
+
+# Visualização
+plotly
+matplotlib
+seaborn
+
+# Dashboard
+streamlit
+
+# Estatística
+scipy
+scikit-learn
+
+# Utilidades
+openpyxl
