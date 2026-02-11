@@ -1,0 +1,123 @@
+{
+  "project": "Vale do Sao Francisco — Producao Agricola (Clima-only, Annual)",
+  "date_trained": "2026-02-11 17:45:50",
+  "dataset_path": "/content/dataset_ml_anual.csv",
+  "split": {
+    "train_lt_year": 2022,
+    "test_ge_year": 2022
+  },
+  "features_choice": {
+    "A_features": [
+      "municipio_encoded",
+      "temp_media_anual",
+      "precipitacao_total_anual_mm",
+      "eto_total_anual_mm",
+      "vento_medio_anual",
+      "amplitude_termica_media_anual",
+      "dias_temp_otima_total_anual"
+    ],
+    "B_features": [
+      "municipio_encoded",
+      "ano_index",
+      "temp_media_anual",
+      "precipitacao_total_anual_mm",
+      "eto_total_anual_mm",
+      "vento_medio_anual",
+      "amplitude_termica_media_anual",
+      "dias_temp_otima_total_anual"
+    ],
+    "chosen": "B",
+    "avg_r2_A": -4.335424423217773,
+    "avg_r2_B": -2.9258562326431274,
+    "delta_r2": 1.409568190574646,
+    "rule": "choose B if delta_r2 > 0.05 else choose A"
+  },
+  "models": {
+    "Manga": {
+      "n_train": 18,
+      "n_test": 6,
+      "train_years": [
+        2013,
+        2021
+      ],
+      "test_years": [
+        2022,
+        2024
+      ],
+      "best_params": {
+        "colsample_bytree": 0.8,
+        "learning_rate": 0.05,
+        "max_depth": 2,
+        "n_estimators": 50,
+        "subsample": 0.8
+      },
+      "metrics_test": {
+        "rf_test": {
+          "r2": -5.11592089675301,
+          "rmse": 112645.32788734054,
+          "mae": 95180.17833333333,
+          "mape": 25.136257453879278
+        },
+        "xgb_test": {
+          "r2": -6.4738311767578125,
+          "rmse": 124524.23686977568,
+          "mae": 107988.9921875,
+          "mape": 28.90814910159074
+        }
+      },
+      "features": [
+        "municipio_encoded",
+        "ano_index",
+        "temp_media_anual",
+        "precipitacao_total_anual_mm",
+        "eto_total_anual_mm",
+        "vento_medio_anual",
+        "amplitude_termica_media_anual",
+        "dias_temp_otima_total_anual"
+      ]
+    },
+    "Uva": {
+      "n_train": 18,
+      "n_test": 6,
+      "train_years": [
+        2013,
+        2021
+      ],
+      "test_years": [
+        2022,
+        2024
+      ],
+      "best_params": {
+        "colsample_bytree": 1.0,
+        "learning_rate": 0.1,
+        "max_depth": 4,
+        "n_estimators": 100,
+        "subsample": 0.8
+      },
+      "metrics_test": {
+        "rf_test": {
+          "r2": 0.5697246374261518,
+          "rmse": 142336.33454445735,
+          "mae": 92534.94222222222,
+          "mape": 29.292371935975055
+        },
+        "xgb_test": {
+          "r2": 0.6221187114715576,
+          "rmse": 133389.07421524447,
+          "mae": 80127.5234375,
+          "mape": 20.69093918514634
+        }
+      },
+      "features": [
+        "municipio_encoded",
+        "ano_index",
+        "temp_media_anual",
+        "precipitacao_total_anual_mm",
+        "eto_total_anual_mm",
+        "vento_medio_anual",
+        "amplitude_termica_media_anual",
+        "dias_temp_otima_total_anual"
+      ]
+    }
+  }
+}
